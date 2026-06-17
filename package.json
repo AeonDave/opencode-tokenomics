@@ -1,0 +1,53 @@
+{
+  "name": "@aeondave/opencode-tokenomics",
+  "version": "0.1.0",
+  "description": "Real-time token usage & cost dashboard for OpenCode, split by project. Boots a local web server on startup and opens it in the browser.",
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tokens",
+    "cost",
+    "usage",
+    "dashboard",
+    "observability"
+  ],
+  "homepage": "https://github.com/AeonDave/opencode-tokenomics#readme",
+  "bugs": "https://github.com/AeonDave/opencode-tokenomics/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AeonDave/opencode-tokenomics.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "src/plugin/index.ts",
+  "exports": {
+    ".": "./src/plugin/index.ts"
+  },
+  "files": [
+    "src",
+    "dashboard/dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "dashboard:dev": "npm --prefix dashboard run dev",
+    "dashboard:build": "npm --prefix dashboard run build"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*",
+    "@opencode-ai/sdk": "*"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": { "optional": true },
+    "@opencode-ai/sdk": { "optional": true }
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.17.4",
+    "@opencode-ai/sdk": "^1.17.4",
+    "@types/bun": "latest",
+    "fast-check": "^4.8.0",
+    "typescript": "latest"
+  }
+}

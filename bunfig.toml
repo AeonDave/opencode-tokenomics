@@ -1,0 +1,4 @@
+[test]
+# Runs before any test module is imported, so config.ts picks up the temp data dir
+# and never touches the real ~/.local/share/opencode/tokenomics.
+preload = ["./tests/setup.ts"]
