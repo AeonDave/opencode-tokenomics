@@ -15,6 +15,7 @@ import { Aggregator } from "./aggregator"
 import { backfillProject } from "./backfill"
 import { config } from "./config"
 import { openBrowser } from "./open-browser"
+import { logDebug } from "./log"
 import { initPricing } from "./pricing"
 import { startServer } from "./server"
 import { loadSettings } from "./settings"
@@ -44,16 +45,14 @@ const TokenomicsPlugin: Plugin = async (ctx) => {
 
 	if (server) {
 		if (config.autoOpen) openBrowser(server.url)
-		// eslint-disable-next-line no-console
-		console.log(`[tokenomics] live dashboard → ${server.url}`)
+		logDebug(ctx?.client, `live dashboard → ${server.url}`)
 	}
 
 	// Replay this project's past sessions so the dashboard shows history, not just usage
 	// from now on. Fire-and-forget so plugin load is never delayed; records flush as they
 	// arrive, so the dashboard fills in progressively.
 	void backfillProject(aggregator, ctx?.client, ctx?.directory).then((n) => {
-		// eslint-disable-next-line no-console
-		if (n > 0) console.log(`[tokenomics] backfilled ${n} past session(s) for ${ctx?.directory ?? "project"}`)
+		if (n > 0) logDebug(ctx?.client, `backfilled ${n} past session(s) for ${ctx?.directory ?? "project"}`)
 	})
 
 	return {

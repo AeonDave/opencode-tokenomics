@@ -446,7 +446,7 @@ function Branch({ node, showProject, collapsed, toggle }: { node: TNode; showPro
   const dot = node.s.isSubagent ? "var(--chart-4)" : "var(--chart-1)"
   return (
     <>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_96px] items-center gap-3 border-b border-border/30 py-1.5 last:border-0">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_96px] items-center gap-3 border-b border-border/30 px-2 py-1.5 last:border-0">
         <div className="flex min-w-0 items-center" style={{ paddingLeft: `${node.depth * 16}px` }}>
           {hasKids ? (
             <button type="button" onClick={() => toggle(node.s.sessionID)} className="mr-1 flex items-center" aria-label={isOpen ? "Collapse" : "Expand"}>
@@ -797,11 +797,17 @@ function shortPath(p: string) {
 
 function Brand() {
   return (
-    <div className="flex items-baseline gap-2">
+    <a
+      href="https://github.com/AeonDave/opencode-tokenomics"
+      target="_blank"
+      rel="noreferrer noopener"
+      title="opencode-tokenomics on GitHub"
+      className="flex items-baseline gap-2 transition-opacity hover:opacity-80"
+    >
       <span className="text-lg font-bold tracking-tight">
         <span className="mr-2" style={{ color: "var(--chart-1)" }}>◖◗</span>tokenomics
       </span>
-    </div>
+    </a>
   )
 }
 
