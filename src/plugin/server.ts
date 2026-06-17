@@ -30,7 +30,12 @@ export interface RunningServer {
 	/** The URL the dashboard is actually being served on. */
 	url: string
 	port: number
+	/** Whether any dashboard (SSE) client is currently connected. */
+	hasClients(): boolean
 }
+
+/** Live count of connected SSE clients, used to detect an already-open dashboard. */
+type Clients = { count: number }
 
 /** What, if anything, is listening on a port. */
 async function probe(port: number): Promise<"tokenomics" | "foreign" | "free"> {
@@ -59,11 +64,12 @@ export async function startServer(bus: Bus, aggregator?: Aggregator, settings?: 
 		if (who === "tokenomics") return null // a sibling already serves the dashboard
 		if (who === "foreign") continue // someone else (e.g. opencode-mem) — try the next port
 		try {
+			const clients: Clients = { count: 0 }
 			const server = Bun.serve({
 				port,
 				idleTimeout: 0,
 				development: false,
-				fetch: (req) => handle(req, bus, aggregator, settings),
+				fetch: (req) => handle(req, bus, clients, aggregator, settings),
 			})
 			// Another instance's disk writes must also wake our SSE clients.
 			const unwatch = watchProjects(() => bus.emit())
@@ -74,6 +80,7 @@ export async function startServer(bus: Bus, aggregator?: Aggregator, settings?: 
 				},
 				url: `http://localhost:${port}`,
 				port,
+				hasClients: () => clients.count > 0,
 			}
 		} catch {
 			// Lost a race between probe and bind — try the next port.
@@ -82,7 +89,7 @@ export async function startServer(bus: Bus, aggregator?: Aggregator, settings?: 
 	return null
 }
 
-async function handle(req: Request, bus: Bus, aggregator?: Aggregator, settings?: Settings): Promise<Response> {
+async function handle(req: Request, bus: Bus, clients: Clients, aggregator?: Aggregator, settings?: Settings): Promise<Response> {
 	const url = new URL(req.url)
 	const pathname = url.pathname
 
@@ -93,7 +100,7 @@ async function handle(req: Request, bus: Bus, aggregator?: Aggregator, settings?
 		return Response.json(await readGlobal(), { headers: { "cache-control": "no-store" } })
 	}
 	if (pathname === "/api/stream") {
-		return streamResponse(bus)
+		return streamResponse(bus, clients)
 	}
 
 	// Card settings: which cards are shown (and computed).
@@ -130,13 +137,16 @@ async function handle(req: Request, bus: Bus, aggregator?: Aggregator, settings?
 	return serveStatic(pathname)
 }
 
-function streamResponse(bus: Bus): Response {
+function streamResponse(bus: Bus, clients: Clients): Response {
 	let unsubscribe = () => {}
 	let heartbeat: ReturnType<typeof setInterval> | undefined
+	let counted = false
 	const encoder = new TextEncoder()
 
 	const stream = new ReadableStream({
 		async start(controller) {
+			clients.count++
+			counted = true
 			const send = (payload: unknown) => {
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
@@ -155,6 +165,7 @@ function streamResponse(bus: Bus): Response {
 			}, 15_000)
 		},
 		cancel() {
+			if (counted) clients.count--
 			unsubscribe()
 			if (heartbeat) clearInterval(heartbeat)
 		},

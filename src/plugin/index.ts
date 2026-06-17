@@ -32,6 +32,11 @@ function skillName(state: { input?: Record<string, unknown>; metadata?: Record<s
 	return m?.[1]?.trim() || undefined
 }
 
+// Grace window before auto-opening: a dashboard left open in the browser reconnects to
+// the fresh server within ~1s (see use-snapshot.ts), so we wait this long and only pop a
+// new tab if nothing reconnected — avoids stacking tabs across opencode restarts.
+const OPEN_GRACE_MS = 2000
+
 const TokenomicsPlugin: Plugin = async (ctx) => {
 	await ensureDirs()
 	await initPricing()
@@ -43,9 +48,17 @@ const TokenomicsPlugin: Plugin = async (ctx) => {
 	const aggregator = new Aggregator(bus, ctx?.directory, settings)
 	const server = await startServer(bus, aggregator, settings)
 
+	let openTimer: ReturnType<typeof setTimeout> | undefined
 	if (server) {
-		if (config.autoOpen) openBrowser(server.url)
 		logDebug(ctx?.client, `live dashboard → ${server.url}`)
+		// Open the browser only if no dashboard is already watching this server. A tab left
+		// open from a previous run reconnects within the grace window; a sibling opencode
+		// window that already serves never reaches here (startServer returns null for it).
+		if (config.autoOpen) {
+			openTimer = setTimeout(() => {
+				if (!server.hasClients()) openBrowser(server.url)
+			}, OPEN_GRACE_MS)
+		}
 	}
 
 	// Replay this project's past sessions so the dashboard shows history, not just usage
@@ -59,6 +72,7 @@ const TokenomicsPlugin: Plugin = async (ctx) => {
 		// Release the port + filesystem watcher when opencode tears the plugin down
 		// (config reload / shutdown). Without this the server leaks across reloads.
 		dispose: async (): Promise<void> => {
+			if (openTimer) clearTimeout(openTimer)
 			server?.stop()
 		},
 		event: async ({ event }: { event: Event }): Promise<void> => {

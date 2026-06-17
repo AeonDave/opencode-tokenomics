@@ -24,7 +24,9 @@ export function useSnapshot(): { data: GlobalSnapshot | null; connected: boolean
       es.onerror = () => {
         setConnected(false)
         es?.close()
-        if (!stopped) retry = setTimeout(connect, 2000)
+        // Reconnect quickly so a tab left open across an opencode restart re-attaches to the
+        // fresh server before the plugin's auto-open grace window elapses (see index.ts).
+        if (!stopped) retry = setTimeout(connect, 1000)
       }
     }
     connect()
