@@ -76,6 +76,28 @@ describe("store disk resilience", () => {
 		expect(mine?.totals.cost).toBe(4.2)
 	})
 
+	test("skips valid-JSON-but-wrong-shape snapshot files instead of crashing the merge", async () => {
+		await ensureDirs()
+		const root = `/disk-test/${process.pid}/shape`
+		await writeSnapshot(snapshot(root, 7.5))
+
+		// Files that PARSE but are not snapshot objects (null / array / number / object
+		// missing `totals`) must be skipped — otherwise mergeGlobal throws on `p.totals.cost`.
+		for (const [name, body] of [
+			["wrong-null.json", "null"],
+			["wrong-array.json", "[]"],
+			["wrong-number.json", "0"],
+			["wrong-nototals.json", JSON.stringify({ projectRoot: "/x" })],
+		] as const) {
+			await fsp.writeFile(path.join(config.projectsDir, name), body, "utf8")
+		}
+
+		const all = await readAllSnapshots()
+		expect(all.find((s) => s.projectRoot === root)?.totals.cost).toBe(7.5)
+		// The whole read still merges cleanly rather than throwing.
+		expect(() => mergeGlobal(all)).not.toThrow()
+	})
+
 	test("loadRecords returns [] for missing and corrupt files", async () => {
 		await ensureDirs()
 		expect(await loadRecords("/disk-test/never-written")).toEqual([])

@@ -145,7 +145,7 @@ function streamResponse(bus: Bus): Response {
 				}
 			}
 			send(await readGlobal())
-			unsubscribe = bus.subscribe(() => void readGlobal().then(send))
+			unsubscribe = bus.subscribe(() => void readGlobal().then(send).catch(() => {}))
 			heartbeat = setInterval(() => {
 				try {
 					controller.enqueue(encoder.encode(`: ping\n\n`))

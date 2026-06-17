@@ -55,7 +55,19 @@ export async function loadRecords(root: string): Promise<UsageRecord[]> {
 	}
 }
 
-/** Read every persisted project snapshot. Skips unreadable/partial files. */
+/**
+ * A snapshot file can be valid JSON yet not a snapshot (null, [], a number — from manual
+ * corruption, an old format, or a truncated write that still parses). Such a value passes
+ * JSON.parse, so the try/catch around the read does NOT skip it; mergeGlobal would then
+ * throw on `p.totals.cost`. Require the object shape mergeGlobal depends on before trusting it.
+ */
+function isProjectSnapshot(value: unknown): value is ProjectSnapshot {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return false
+	const totals = (value as { totals?: unknown }).totals
+	return typeof totals === "object" && totals !== null
+}
+
+/** Read every persisted project snapshot. Skips unreadable/partial/malformed files. */
 export async function readAllSnapshots(): Promise<ProjectSnapshot[]> {
 	let names: string[]
 	try {
@@ -68,7 +80,9 @@ export async function readAllSnapshots(): Promise<ProjectSnapshot[]> {
 		if (!name.endsWith(".json") || name.endsWith(".tmp")) continue
 		try {
 			const raw = await fsp.readFile(path.join(config.projectsDir, name), "utf8")
-			out.push(JSON.parse(raw) as ProjectSnapshot)
+			const parsed: unknown = JSON.parse(raw)
+			// Skip valid-JSON-but-wrong-shape files so one bad snapshot can't crash readGlobal.
+			if (isProjectSnapshot(parsed)) out.push(parsed)
 		} catch {
 			// partial write mid-rename; next tick will have it
 		}
