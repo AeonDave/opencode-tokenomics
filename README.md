@@ -146,11 +146,7 @@ starting a duplicate.
 ```
 
 Set every rate to `0` to treat a model as free — handy for **self-hosted / custom providers** whose
-id doesn't contain `free` (e.g. a local vLLM model), so they don't show an API-rate estimate:
-
-```json
-{ "redline/Qwen_Qwen3.6-27B-Q4_K_M.gguf": { "input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0 } }
-```
+id doesn't contain `free` (e.g. a local vLLM model), so they don't show an API-rate estimate.
 
 ## API
 

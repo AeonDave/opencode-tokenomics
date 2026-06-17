@@ -1,0 +1,4 @@
+# Exists to override dashboard/.gitignore (which ignores dist) during npm packing,
+# so the built dashboard/dist ships. Root package.json "files" already restricts the
+# dashboard to dist, so the only extra thing to drop here is this folder's README.
+/README.md

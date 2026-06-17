@@ -1,0 +1,19 @@
+# Inclusion is driven by package.json "files" (src, dashboard/dist, README, LICENSE).
+# This file exists mainly to disable npm's .gitignore fallback, which would otherwise
+# drop the gitignored-but-shipped dashboard/dist from the published package.
+
+# Dev-only — never ship these (also excluded by the "files" allowlist; listed for clarity).
+node_modules/
+tests/
+dashboard/src/
+dashboard/node_modules/
+dashboard/*.json
+dashboard/*.ts
+dashboard/*.js
+dashboard/index.html
+dashboard/.gitignore
+bun.lock
+bunfig.toml
+tsconfig.json
+.gitignore
+assets/
