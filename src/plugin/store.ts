@@ -119,6 +119,46 @@ export async function readGlobal(): Promise<GlobalSnapshot> {
 	return mergeGlobal(await readAllSnapshots())
 }
 
+/** Where the live web server records its actual URL/port, so it stays discoverable even
+ * when it drifts off the preferred port (and even with startup logs silenced to debug). */
+const serverInfoPath = path.join(config.dataDir, "server.json")
+
+export interface ServerInfo {
+	url: string
+	port: number
+	pid: number
+	startedAt: number
+}
+
+/** Publish the live server's address. Best-effort: a failure here must never break serving. */
+export async function writeServerInfo(info: ServerInfo): Promise<void> {
+	try {
+		await writeJson(serverInfoPath, info)
+	} catch {
+		// non-fatal — the server still works, it's just not discoverable via the file
+	}
+}
+
+/** Read the recorded server address, or null if none/unreadable. */
+export async function readServerInfo(): Promise<ServerInfo | null> {
+	try {
+		const parsed = JSON.parse(await fsp.readFile(serverInfoPath, "utf8"))
+		if (parsed && typeof parsed.url === "string" && typeof parsed.port === "number") return parsed as ServerInfo
+	} catch {
+		// missing or malformed — caller falls back to port scanning
+	}
+	return null
+}
+
+/** Remove the recorded address when this server stops, so stale pointers don't linger. */
+export async function clearServerInfo(): Promise<void> {
+	try {
+		await fsp.rm(serverInfoPath, { force: true })
+	} catch {
+		// ignore
+	}
+}
+
 /** Project keys are 16-hex sha256 slices — validating defends the delete routes from path traversal. */
 const KEY_RE = /^[0-9a-f]{16}$/
 

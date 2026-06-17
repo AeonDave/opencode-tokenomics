@@ -18,7 +18,7 @@ import { config } from "./config"
 import type { Settings } from "./settings"
 import { saveSettings } from "./settings"
 import type { Bus } from "./store"
-import { deleteAllProjects, deleteProjectFiles, readGlobal, watchProjects } from "./store"
+import { clearServerInfo, deleteAllProjects, deleteProjectFiles, readGlobal, watchProjects, writeServerInfo } from "./store"
 import { FALLBACK_HTML } from "./fallback-page"
 
 const DIST_DIR = path.join(import.meta.dir, "..", "..", "dashboard", "dist")
@@ -40,7 +40,9 @@ type Clients = { count: number }
 /** What, if anything, is listening on a port. */
 async function probe(port: number): Promise<"tokenomics" | "foreign" | "free"> {
 	try {
-		const res = await fetch(`http://localhost:${port}/api/health`, { signal: AbortSignal.timeout(300) })
+		// 1s (not 300ms): under a heavy delegation burst an existing server can be briefly slow
+		// to answer health; too tight a timeout reads it as "free" and we drift to a new port.
+		const res = await fetch(`http://localhost:${port}/api/health`, { signal: AbortSignal.timeout(1000) })
 		if (res.ok) {
 			const body = (await res.json().catch(() => null)) as { service?: string } | null
 			if (body?.service === SERVICE) return "tokenomics"
@@ -73,12 +75,16 @@ export async function startServer(bus: Bus, aggregator?: Aggregator, settings?: 
 			})
 			// Another instance's disk writes must also wake our SSE clients.
 			const unwatch = watchProjects(() => bus.emit())
+			const url = `http://localhost:${port}`
+			// Record the real address so it stays discoverable when it drifts off the preferred port.
+			void writeServerInfo({ url, port, pid: process.pid, startedAt: Date.now() })
 			return {
 				stop() {
 					unwatch()
+					void clearServerInfo()
 					server.stop(true)
 				},
-				url: `http://localhost:${port}`,
+				url,
 				port,
 				hasClients: () => clients.count > 0,
 			}
